@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, ArrowRight, Code, Eye } from 'lucide-react'
+import { BookOpen, ArrowRight, Code, Eye, List } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -27,13 +27,22 @@ export default function HomePage() {
               <p className="text-slate-600 mb-4">
                 Xem trang chi tiết truyện "Trận Vấn Trường Sinh" với JWT authentication
               </p>
-              <Link 
-                href="/story/tran-van-truong-sinh"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Xem Demo Story
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              <div className="flex gap-2">
+                <Link 
+                  href="/story/tran-van-truong-sinh"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Xem Chi Tiết
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link 
+                  href="/story/tran-van-truong-sinh/chapters"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <List className="w-4 h-4" />
+                  Danh Sách Chương
+                </Link>
+              </div>
             </CardContent>
           </Card>
 

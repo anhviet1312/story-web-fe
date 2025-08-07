@@ -6,6 +6,7 @@ import { Calendar, User, Eye, BookOpen } from 'lucide-react'
 import Image from "next/image"
 import { createAuthenticatedFetch, isTokenExpired, getUserFromToken } from '@/lib/auth'
 import { DebugInfo } from '@/components/debug-info'
+import Link from 'next/link'
 
 interface Story {
   id: string
@@ -191,9 +192,13 @@ export default async function StoryPage({ params }: { params: { slug: string } }
 
         {/* Action buttons */}
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <Link 
+            href={`/story/${story.slug}/chapters`}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+          >
+            <BookOpen className="w-4 h-4" />
             Đọc truyện
-          </button>
+          </Link>
           <button className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
             Thêm vào thư viện
           </button>
