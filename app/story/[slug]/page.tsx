@@ -88,8 +88,14 @@ function getTypeColor(type: string): string {
   }
 }
 
-export default async function StoryPage({ params }: { params: { slug: string } }) {
-  const story = await getStory(params.slug)
+export default async function StoryPage({ 
+  params 
+}: { 
+  params: Promise<{ slug: string }>
+}) {
+  // Await params before using its properties
+  const { slug } = await params
+  const story = await getStory(slug)
 
   if (!story) {
     notFound()
