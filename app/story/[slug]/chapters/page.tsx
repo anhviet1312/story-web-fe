@@ -4,12 +4,13 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft, List } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft, List, Hash } from 'lucide-react'
 import { createAuthenticatedFetch, isTokenExpired } from '@/lib/auth'
 
 interface Chapter {
   id: string
   name: string
+  number: number
 }
 
 interface ChaptersResponse {
@@ -50,12 +51,6 @@ async function getChapters(slug: string, page: number = 1): Promise<ChaptersResp
   }
 }
 
-// Extract chapter number from chapter name
-function extractChapterNumber(chapterName: string): string {
-  const match = chapterName.match(/Chương (\d+)/)
-  return match ? match[1] : '?'
-}
-
 // Extract chapter title (everything after the colon)
 function extractChapterTitle(chapterName: string): string {
   const parts = chapterName.split(' : ')
@@ -66,11 +61,15 @@ export default async function ChaptersPage({
   params, 
   searchParams 
 }: { 
-  params: { slug: string }
-  searchParams: { page?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ page?: string }>
 }) {
-  const currentPage = parseInt(searchParams.page || '1')
-  const chaptersData = await getChapters(params.slug, currentPage)
+  // Await both params and searchParams
+  const { slug } = await params
+  const { page } = await searchParams
+  
+  const currentPage = parseInt(page || '1')
+  const chaptersData = await getChapters(slug, currentPage)
 
   if (!chaptersData) {
     notFound()
@@ -91,7 +90,7 @@ export default async function ChaptersPage({
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <Link 
-              href={`/story/${params.slug}`}
+              href={`/story/${slug}`}
               className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -119,20 +118,20 @@ export default async function ChaptersPage({
           <CardContent className="p-0">
             <div className="divide-y divide-slate-200">
               {chapters.map((chapter, index) => {
-                const chapterNumber = extractChapterNumber(chapter.name)
                 const chapterTitle = extractChapterTitle(chapter.name)
                 
                 return (
                   <Link
                     key={chapter.id}
-                    href={`/story/${params.slug}/chapter/${chapter.id}`}
+                    href={`/story/${slug}/chapter/${chapter.number}`}
                     className="block hover:bg-slate-50 transition-colors"
                   >
                     <div className="p-4 flex items-center gap-4">
                       {/* Chapter Number Badge */}
                       <div className="flex-shrink-0">
                         <Badge variant="outline" className="w-16 justify-center font-mono">
-                          #{chapterNumber}
+                          <Hash className="w-3 h-3 mr-1" />
+                          {chapter.number}
                         </Badge>
                       </div>
                       
@@ -142,7 +141,7 @@ export default async function ChaptersPage({
                           {chapterTitle}
                         </h3>
                         <p className="text-sm text-slate-500 mt-1">
-                          Chương {chapterNumber}
+                          Chương {chapter.number}
                         </p>
                       </div>
                       
@@ -166,7 +165,7 @@ export default async function ChaptersPage({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {hasPrevPage ? (
-                      <Link href={`/story/${params.slug}/chapters?page=${currentPage - 1}`}>
+                      <Link href={`/story/${slug}/chapters?page=${currentPage - 1}`}>
                         <Button variant="outline" className="flex items-center gap-2">
                           <ChevronLeft className="w-4 h-4" />
                           Trang trước
@@ -188,7 +187,7 @@ export default async function ChaptersPage({
 
                   <div className="flex items-center gap-2">
                     {hasNextPage ? (
-                      <Link href={`/story/${params.slug}/chapters?page=${currentPage + 1}`}>
+                      <Link href={`/story/${slug}/chapters?page=${currentPage + 1}`}>
                         <Button variant="outline" className="flex items-center gap-2">
                           Trang sau
                           <ChevronRight className="w-4 h-4" />
@@ -210,13 +209,13 @@ export default async function ChaptersPage({
         {/* Quick Navigation */}
         <div className="mt-6 text-center">
           <div className="flex flex-wrap gap-3 justify-center">
-            <Link href={`/story/${params.slug}/chapters?page=1`}>
+            <Link href={`/story/${slug}/chapters?page=1`}>
               <Button variant="ghost" size="sm">
                 Trang đầu
               </Button>
             </Link>
             {currentPage > 1 && (
-              <Link href={`/story/${params.slug}/chapters?page=${currentPage - 1}`}>
+              <Link href={`/story/${slug}/chapters?page=${currentPage - 1}`}>
                 <Button variant="ghost" size="sm">
                   Trang {currentPage - 1}
                 </Button>
@@ -226,13 +225,31 @@ export default async function ChaptersPage({
               Trang {currentPage}
             </Button>
             {hasNextPage && (
-              <Link href={`/story/${params.slug}/chapters?page=${currentPage + 1}`}>
+              <Link href={`/story/${slug}/chapters?page=${currentPage + 1}`}>
                 <Button variant="ghost" size="sm">
                   Trang {currentPage + 1}
                 </Button>
               </Link>
             )}
           </div>
+        </div>
+
+        {/* Chapter Statistics */}
+        <div className="mt-8 text-center">
+          <Card className="bg-slate-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center gap-6 text-sm text-slate-600">
+                <div className="flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  <span>{chapters.length} chương trong trang này</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <List className="w-4 h-4" />
+                  <span>Trang {currentPage}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
