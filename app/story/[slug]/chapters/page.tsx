@@ -1,33 +1,28 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, User, Eye, BookOpen } from 'lucide-react'
-import Image from "next/image"
-import { createAuthenticatedFetch, isTokenExpired, getUserFromToken } from '@/lib/auth'
-import { DebugInfo } from '@/components/debug-info'
-import Link from 'next/link'
+import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft, List } from 'lucide-react'
+import { createAuthenticatedFetch, isTokenExpired } from '@/lib/auth'
 
-interface Story {
+interface Chapter {
   id: string
-  slug: string
   name: string
-  description: string
-  type: string
-  status: string
-  image_url: string | null
-  created_by: string
-  updated_at: string
-  created_at: string
 }
 
-interface StoryResponse {
-  data: Story
+interface ChaptersResponse {
+  data: Chapter[]
+  // Add pagination metadata if your API provides it
+  total?: number
+  current_page?: number
+  per_page?: number
+  last_page?: number
 }
 
-async function getStory(slug: string): Promise<Story | null> {
+async function getChapters(slug: string, page: number = 1): Promise<ChaptersResponse | null> {
   try {
-    // Check if token is expired
     if (isTokenExpired()) {
       console.error('JWT token has expired')
       return null
@@ -35,180 +30,211 @@ async function getStory(slug: string): Promise<Story | null> {
 
     const authenticatedFetch = createAuthenticatedFetch()
     
-    const response = await authenticatedFetch(`${process.env.API_BASE_URL}/api/v1/protected/story/${slug}/detail`, {
-      cache: 'no-store',
-    })
+    const response = await authenticatedFetch(
+      `${process.env.API_BASE_URL}/api/v1/protected/story/${slug}/chapters?page=${page}`,
+      {
+        cache: 'no-store',
+      }
+    )
     
     if (!response.ok) {
       console.error(`API Error: ${response.status} ${response.statusText}`)
       return null
     }
     
-    const result: StoryResponse = await response.json()
-    return result.data
+    const result: ChaptersResponse = await response.json()
+    return result
   } catch (error) {
-    console.error('Failed to fetch story:', error)
+    console.error('Failed to fetch chapters:', error)
     return null
   }
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('vi-VN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+// Extract chapter number from chapter name
+function extractChapterNumber(chapterName: string): string {
+  const match = chapterName.match(/Chương (\d+)/)
+  return match ? match[1] : '?'
 }
 
-function getStatusColor(status: string): string {
-  switch (status.toLowerCase()) {
-    case 'published':
-      return 'bg-green-100 text-green-800 hover:bg-green-100'
-    case 'unpublish':
-      return 'bg-red-100 text-red-800 hover:bg-red-100'
-    case 'draft':
-      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-    default:
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-  }
+// Extract chapter title (everything after the colon)
+function extractChapterTitle(chapterName: string): string {
+  const parts = chapterName.split(' : ')
+  return parts.length > 1 ? parts[1] : chapterName
 }
 
-function getTypeColor(type: string): string {
-  switch (type.toUpperCase()) {
-    case 'TTV':
-      return 'bg-blue-100 text-blue-800 hover:bg-blue-100'
-    case 'NOVEL':
-      return 'bg-purple-100 text-purple-800 hover:bg-purple-100'
-    case 'MANGA':
-      return 'bg-orange-100 text-orange-800 hover:bg-orange-100'
-    default:
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-  }
-}
+export default async function ChaptersPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: { slug: string }
+  searchParams: { page?: string }
+}) {
+  const currentPage = parseInt(searchParams.page || '1')
+  const chaptersData = await getChapters(params.slug, currentPage)
 
-export default async function StoryPage({ params }: { params: { slug: string } }) {
-  const story = await getStory(params.slug)
-
-  if (!story) {
+  if (!chaptersData) {
     notFound()
   }
+
+  const { data: chapters } = chaptersData
+  
+  // Calculate pagination (assuming 20 items per page based on your data)
+  const itemsPerPage = 20
+  const totalItems = chapters.length
+  const hasNextPage = totalItems === itemsPerPage // If we got full page, there might be more
+  const hasPrevPage = currentPage > 1
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="overflow-hidden shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-700 text-white">
-            <div className="flex flex-col space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge className={getTypeColor(story.type)}>
-                  {story.type}
-                </Badge>
-                <Badge className={getStatusColor(story.status)}>
-                  {story.status === 'unpublish' ? 'Chưa xuất bản' : story.status}
-                </Badge>
-              </div>
-              
-              <CardTitle className="text-2xl md:text-3xl font-bold leading-tight">
-                {story.name}
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link 
+              href={`/story/${params.slug}`}
+              className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Quay lại chi tiết truyện
+            </Link>
+          </div>
+          
+          <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <List className="w-6 h-6" />
+                <div>
+                  <h1 className="text-2xl font-bold">Danh sách chương</h1>
+                  <p className="text-blue-100 text-sm mt-1">
+                    Trang {currentPage} • {chapters.length} chương
+                  </p>
+                </div>
               </CardTitle>
-              
-              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-200">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span>Tạo: {formatDate(story.created_at)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  <span>ID: {story.created_by.slice(0, 8)}...</span>
-                </div>
-                {story.updated_at !== story.created_at && (
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-4 h-4" />
-                    <span>Cập nhật: {formatDate(story.updated_at)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
+          </Card>
+        </div>
 
+        {/* Chapters List */}
+        <Card className="shadow-lg">
           <CardContent className="p-0">
-            {story.image_url && (
-              <div className="relative h-64 md:h-80 overflow-hidden">
-                <Image
-                  src={story.image_url || "/placeholder.svg"}
-                  alt={story.name}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-              </div>
-            )}
-
-            <div className="p-6 md:p-8">
-              <div className="flex items-center gap-2 mb-6">
-                <BookOpen className="w-5 h-5 text-slate-600" />
-                <h2 className="text-xl font-semibold text-slate-800">Mô tả truyện</h2>
-              </div>
-              
-              <Separator className="mb-6" />
-              
-              <div className="prose prose-slate max-w-none">
-                <div className="text-slate-700 leading-relaxed whitespace-pre-line text-base">
-                  {story.description}
-                </div>
-              </div>
-
-              <Separator className="my-8" />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-slate-800">Thông tin chi tiết</h3>
-                  <div className="space-y-1 text-slate-600">
-                    <p><span className="font-medium">ID:</span> {story.id}</p>
-                    <p><span className="font-medium">Slug:</span> {story.slug}</p>
-                    <p><span className="font-medium">Thể loại:</span> {story.type}</p>
-                  </div>
-                </div>
+            <div className="divide-y divide-slate-200">
+              {chapters.map((chapter, index) => {
+                const chapterNumber = extractChapterNumber(chapter.name)
+                const chapterTitle = extractChapterTitle(chapter.name)
                 
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-slate-800">Thời gian</h3>
-                  <div className="space-y-1 text-slate-600">
-                    <p><span className="font-medium">Tạo lúc:</span> {formatDate(story.created_at)}</p>
-                    <p><span className="font-medium">Cập nhật:</span> {formatDate(story.updated_at)}</p>
-                    <p><span className="font-medium">Trạng thái:</span> 
-                      <Badge className={`ml-2 ${getStatusColor(story.status)}`} variant="secondary">
-                        {story.status === 'unpublish' ? 'Chưa xuất bản' : story.status}
-                      </Badge>
-                    </p>
-                  </div>
-                </div>
-              </div>
+                return (
+                  <Link
+                    key={chapter.id}
+                    href={`/story/${params.slug}/chapter/${chapter.id}`}
+                    className="block hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="p-4 flex items-center gap-4">
+                      {/* Chapter Number Badge */}
+                      <div className="flex-shrink-0">
+                        <Badge variant="outline" className="w-16 justify-center font-mono">
+                          #{chapterNumber}
+                        </Badge>
+                      </div>
+                      
+                      {/* Chapter Content */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-slate-800 truncate">
+                          {chapterTitle}
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Chương {chapterNumber}
+                        </p>
+                      </div>
+                      
+                      {/* Read Icon */}
+                      <div className="flex-shrink-0">
+                        <BookOpen className="w-5 h-5 text-slate-400" />
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
 
-        {/* Action buttons */}
-        <div className="mt-6 flex flex-wrap gap-3 justify-center">
-          <Link 
-            href={`/story/${story.slug}/chapters`}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-          >
-            <BookOpen className="w-4 h-4" />
-            Đọc truyện
-          </Link>
-          <button className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
-            Thêm vào thư viện
-          </button>
-          <button className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
-            Chia sẻ
-          </button>
+        {/* Pagination */}
+        {(hasPrevPage || hasNextPage) && (
+          <div className="mt-8">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {hasPrevPage ? (
+                      <Link href={`/story/${params.slug}/chapters?page=${currentPage - 1}`}>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <ChevronLeft className="w-4 h-4" />
+                          Trang trước
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Button variant="outline" disabled className="flex items-center gap-2">
+                        <ChevronLeft className="w-4 h-4" />
+                        Trang trước
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-600">
+                      Trang {currentPage}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {hasNextPage ? (
+                      <Link href={`/story/${params.slug}/chapters?page=${currentPage + 1}`}>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          Trang sau
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Button variant="outline" disabled className="flex items-center gap-2">
+                        Trang sau
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Quick Navigation */}
+        <div className="mt-6 text-center">
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link href={`/story/${params.slug}/chapters?page=1`}>
+              <Button variant="ghost" size="sm">
+                Trang đầu
+              </Button>
+            </Link>
+            {currentPage > 1 && (
+              <Link href={`/story/${params.slug}/chapters?page=${currentPage - 1}`}>
+                <Button variant="ghost" size="sm">
+                  Trang {currentPage - 1}
+                </Button>
+              </Link>
+            )}
+            <Button variant="default" size="sm" disabled>
+              Trang {currentPage}
+            </Button>
+            {hasNextPage && (
+              <Link href={`/story/${params.slug}/chapters?page=${currentPage + 1}`}>
+                <Button variant="ghost" size="sm">
+                  Trang {currentPage + 1}
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
-      {/* Add debug info component */}
-      <DebugInfo />
     </div>
   )
 }
