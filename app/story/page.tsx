@@ -3,9 +3,9 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { BookOpen, Calendar, Hash } from 'lucide-react'
+import { BookOpen, Calendar, Hash } from "lucide-react"
 import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
+import { PaginationAdvanced } from "@/components/pagination-advanced"
 
 interface Story {
   id: string
@@ -21,12 +21,12 @@ interface Story {
 }
 
 interface StoriesResponse {
-  data: Story[]
-  // Optionally your API may add pagination meta later
-  total?: number
-  current_page?: number
-  per_page?: number
-  last_page?: number
+  data: {
+    total: number
+    page: number
+    page_size: number
+    items: Story[]
+  }
 }
 
 async function getStories(page: number): Promise<StoriesResponse | null> {
@@ -62,6 +62,7 @@ function formatDate(dateString: string): string {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
     })
   } catch {
     return "—"
@@ -107,13 +108,10 @@ export default async function StoriesIndex({
     notFound()
   }
 
-  const stories = storiesRes.data || []
-
-  // Heuristic pagination when API meta is not provided:
-  // enable next if page is "full" (commonly 20 items per page)
-  const itemsPerPage = 20
-  const hasPrev = currentPage > 1
-  const hasNext = stories.length === itemsPerPage
+  const {
+    data: { total, page: apiPage, page_size, items: stories },
+  } = storiesRes
+  const totalPages = Math.ceil(total / page_size)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -121,6 +119,9 @@ export default async function StoriesIndex({
         <Card className="mb-6 bg-gradient-to-r from-slate-900 to-slate-700 text-white">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">Danh sách truyện</CardTitle>
+            <p className="text-slate-300 text-sm mt-1">
+              Trang {currentPage} / {totalPages} • Tổng {total} truyện
+            </p>
           </CardHeader>
         </Card>
 
@@ -133,8 +134,9 @@ export default async function StoriesIndex({
                   <Image
                     src={
                       story.image_url ||
-                      "/placeholder.svg?height=160&width=160&query=story%20cover%20thumbnail"
-                     || "/placeholder.svg"}
+                      "/placeholder.svg?height=160&width=160&query=story%20cover%20thumbnail" ||
+                      "/placeholder.svg"
+                    }
                     alt={story.name}
                     fill
                     className="object-cover"
@@ -192,39 +194,36 @@ export default async function StoriesIndex({
         {/* Empty state */}
         {stories.length === 0 && (
           <Card className="mt-6">
-            <CardContent className="p-6 text-center text-slate-600">
-              Không có truyện nào ở trang này.
-            </CardContent>
+            <CardContent className="p-6 text-center text-slate-600">Không có truyện nào ở trang này.</CardContent>
           </Card>
         )}
 
-        {/* Pagination */}
-        <div className="mt-8 flex items-center justify-between">
-          <div>
-            {hasPrev ? (
-              <Link href={`/story?page=${currentPage - 1}`}>
-                <Button variant="outline">Trang trước</Button>
-              </Link>
-            ) : (
-              <Button variant="outline" disabled>
-                Trang trước
-              </Button>
-            )}
+        {totalPages > 1 && (
+          <div className="mt-8">
+            <Card>
+              <CardContent className="p-6">
+                <PaginationAdvanced currentPage={currentPage} totalPages={totalPages} baseUrl="/story" />
+              </CardContent>
+            </Card>
           </div>
+        )}
 
-          <div className="text-sm text-slate-600">Trang {currentPage}</div>
-
-          <div>
-            {hasNext ? (
-              <Link href={`/story?page=${currentPage + 1}`}>
-                <Button variant="outline">Trang sau</Button>
-              </Link>
-            ) : (
-              <Button variant="outline" disabled>
-                Trang sau
-              </Button>
-            )}
-          </div>
+        {/* Story Statistics */}
+        <div className="mt-6 text-center">
+          <Card className="bg-slate-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center gap-6 text-sm text-slate-600">
+                <div className="flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  <span>{stories.length} truyện trong trang này</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Hash className="w-4 h-4" />
+                  <span>Tổng {total} truyện</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
