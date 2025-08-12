@@ -1,11 +1,10 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { notFound } from "next/navigation"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { ChevronLeft, ChevronRight, BookOpen, ArrowLeft, List, Hash } from 'lucide-react'
-import { createAuthenticatedFetch, isTokenExpired } from '@/lib/auth'
+import { BookOpen, ArrowLeft, List, Hash } from "lucide-react"
+import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
+import { PaginationAdvanced } from "@/components/pagination-advanced"
 
 interface Chapter {
   id: string
@@ -14,74 +13,70 @@ interface Chapter {
 }
 
 interface ChaptersResponse {
-  data: Chapter[]
-  // Add pagination metadata if your API provides it
-  total?: number
-  current_page?: number
-  per_page?: number
-  last_page?: number
+  data: {
+    total: number
+    page: number
+    page_size: number
+    items: Chapter[]
+  }
 }
 
-async function getChapters(slug: string, page: number = 1): Promise<ChaptersResponse | null> {
+async function getChapters(slug: string, page = 1): Promise<ChaptersResponse | null> {
   try {
     if (isTokenExpired()) {
-      console.error('JWT token has expired')
+      console.error("JWT token has expired")
       return null
     }
 
     const authenticatedFetch = createAuthenticatedFetch()
-    
+
     const response = await authenticatedFetch(
       `${process.env.API_BASE_URL}/api/v1/protected/story/${slug}/chapters?page=${page}`,
       {
-        cache: 'no-store',
-      }
+        cache: "no-store",
+      },
     )
-    
+
     if (!response.ok) {
       console.error(`API Error: ${response.status} ${response.statusText}`)
       return null
     }
-    
+
     const result: ChaptersResponse = await response.json()
     return result
   } catch (error) {
-    console.error('Failed to fetch chapters:', error)
+    console.error("Failed to fetch chapters:", error)
     return null
   }
 }
 
 // Extract chapter title (everything after the colon)
 function extractChapterTitle(chapterName: string): string {
-  const parts = chapterName.split(' : ')
+  const parts = chapterName.split(" : ")
   return parts.length > 1 ? parts[1] : chapterName
 }
 
-export default async function ChaptersPage({ 
-  params, 
-  searchParams 
-}: { 
+export default async function ChaptersPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ slug: string }>
   searchParams: Promise<{ page?: string }>
 }) {
-  // Await both params and searchParams
   const { slug } = await params
   const { page } = await searchParams
-  
-  const currentPage = parseInt(page || '1')
+
+  const currentPage = Number.parseInt(page || "1")
   const chaptersData = await getChapters(slug, currentPage)
 
   if (!chaptersData) {
     notFound()
   }
 
-  const { data: chapters } = chaptersData
-  
-  // Calculate pagination (assuming 20 items per page based on your data)
-  const itemsPerPage = 20
-  const totalItems = chapters.length
-  const hasNextPage = totalItems === itemsPerPage // If we got full page, there might be more
-  const hasPrevPage = currentPage > 1
+  const {
+    data: { total, page: apiPage, page_size, items: chapters },
+  } = chaptersData
+  const totalPages = Math.ceil(total / page_size)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -89,7 +84,7 @@ export default async function ChaptersPage({
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <Link 
+            <Link
               href={`/story/${slug}`}
               className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
             >
@@ -97,7 +92,7 @@ export default async function ChaptersPage({
               Quay lại chi tiết truyện
             </Link>
           </div>
-          
+
           <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
@@ -105,7 +100,7 @@ export default async function ChaptersPage({
                 <div>
                   <h1 className="text-2xl font-bold">Danh sách chương</h1>
                   <p className="text-blue-100 text-sm mt-1">
-                    Trang {currentPage} • {chapters.length} chương
+                    Trang {currentPage} / {totalPages} • Tổng {total} chương
                   </p>
                 </div>
               </CardTitle>
@@ -119,7 +114,7 @@ export default async function ChaptersPage({
             <div className="divide-y divide-slate-200">
               {chapters.map((chapter, index) => {
                 const chapterTitle = extractChapterTitle(chapter.name)
-                
+
                 return (
                   <Link
                     key={chapter.id}
@@ -127,25 +122,18 @@ export default async function ChaptersPage({
                     className="block hover:bg-slate-50 transition-colors"
                   >
                     <div className="p-4 flex items-center gap-4">
-                      {/* Chapter Number Badge */}
                       <div className="flex-shrink-0">
                         <Badge variant="outline" className="w-16 justify-center font-mono">
                           <Hash className="w-3 h-3 mr-1" />
                           {chapter.number}
                         </Badge>
                       </div>
-                      
-                      {/* Chapter Content */}
+
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-slate-800 truncate">
-                          {chapterTitle}
-                        </h3>
-                        <p className="text-sm text-slate-500 mt-1">
-                          Chương {chapter.number}
-                        </p>
+                        <h3 className="font-medium text-slate-800 truncate">{chapterTitle}</h3>
+                        <p className="text-sm text-slate-500 mt-1">Chương {chapter.number}</p>
                       </div>
-                      
-                      {/* Read Icon */}
+
                       <div className="flex-shrink-0">
                         <BookOpen className="w-5 h-5 text-slate-400" />
                       </div>
@@ -158,81 +146,19 @@ export default async function ChaptersPage({
         </Card>
 
         {/* Pagination */}
-        {(hasPrevPage || hasNextPage) && (
+        {totalPages > 1 && (
           <div className="mt-8">
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {hasPrevPage ? (
-                      <Link href={`/story/${slug}/chapters?page=${currentPage - 1}`}>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <ChevronLeft className="w-4 h-4" />
-                          Trang trước
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" disabled className="flex items-center gap-2">
-                        <ChevronLeft className="w-4 h-4" />
-                        Trang trước
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">
-                      Trang {currentPage}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {hasNextPage ? (
-                      <Link href={`/story/${slug}/chapters?page=${currentPage + 1}`}>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          Trang sau
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" disabled className="flex items-center gap-2">
-                        Trang sau
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+              <CardContent className="p-6">
+                <PaginationAdvanced
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  baseUrl={`/story/${slug}/chapters`}
+                />
               </CardContent>
             </Card>
           </div>
         )}
-
-        {/* Quick Navigation */}
-        <div className="mt-6 text-center">
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link href={`/story/${slug}/chapters?page=1`}>
-              <Button variant="ghost" size="sm">
-                Trang đầu
-              </Button>
-            </Link>
-            {currentPage > 1 && (
-              <Link href={`/story/${slug}/chapters?page=${currentPage - 1}`}>
-                <Button variant="ghost" size="sm">
-                  Trang {currentPage - 1}
-                </Button>
-              </Link>
-            )}
-            <Button variant="default" size="sm" disabled>
-              Trang {currentPage}
-            </Button>
-            {hasNextPage && (
-              <Link href={`/story/${slug}/chapters?page=${currentPage + 1}`}>
-                <Button variant="ghost" size="sm">
-                  Trang {currentPage + 1}
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
 
         {/* Chapter Statistics */}
         <div className="mt-8 text-center">
@@ -245,7 +171,7 @@ export default async function ChaptersPage({
                 </div>
                 <div className="flex items-center gap-1">
                   <List className="w-4 h-4" />
-                  <span>Trang {currentPage}</span>
+                  <span>Tổng {total} chương</span>
                 </div>
               </div>
             </CardContent>

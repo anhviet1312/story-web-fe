@@ -9,7 +9,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Story Display - Đọc truyện online',
   description: 'Nền tảng đọc truyện trực tuyến với nhiều thể loại hấp dẫn',
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -33,6 +32,12 @@ export default function RootLayout({
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Demo Story
+                </Link>
+                <Link 
+                  href="/story" 
+                  className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Tất cả truyện
                 </Link>
               </div>
             </div>

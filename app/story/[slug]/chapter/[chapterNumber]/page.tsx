@@ -162,7 +162,7 @@ export default async function ChapterPage({
         {/* Chapter Content */}
         <Card className="shadow-lg">
           <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-700 text-white">
-            <div className="space-y-3">
+            <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge className={getStatusColor(chapter.status)}>
@@ -190,7 +190,7 @@ export default async function ChapterPage({
                 </div>
                 <div className="flex items-center gap-1">
                   <User className="w-4 h-4" />
-                  <span>ID: {chapter.created_by.slice(0, 8)}...</span>
+                  <span>ID: {chapter.created_by ? chapter.created_by.slice(0, 8) + "..." : "Không xác định"}</span>
                 </div>
               </div>
 
@@ -238,7 +238,7 @@ export default async function ChapterPage({
               <div className="space-y-1 text-sm text-slate-600">
                 <p><span className="font-medium">Tạo lúc:</span> {formatDate(chapter.created_at)}</p>
                 <p><span className="font-medium">Cập nhật:</span> {formatDate(chapter.updated_at)}</p>
-                <p><span className="font-medium">Tác giả:</span> {chapter.created_by.slice(0, 8)}...</p>
+                <p><span className="font-medium">Tác giả:</span> {chapter.created_by ? chapter.created_by.slice(0, 8) + "..." : "Không xác định"}</p>
               </div>
             </CardContent>
           </Card>
