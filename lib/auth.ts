@@ -24,11 +24,17 @@ function dispatchAuthChange(): void {
 
 // Get stored token from localStorage or fallback to hardcoded
 export function getStoredToken(): string | null {
+  console.log("[v0] getStoredToken called, window type:", typeof window)
+
   if (typeof window !== "undefined") {
-    return localStorage.getItem(TOKEN_KEY)
+    console.log("[v0] Client-side: accessing localStorage")
+    const token = localStorage.getItem(TOKEN_KEY)
+    console.log("[v0] Token from localStorage:", token ? "found" : "not found")
+    return token
   }
-  // Fallback for server-side rendering
-  return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InF1b2N2aWV0MTMxMjIwMDJAZ21haWwuY29tIiwiZXhwIjoxNzU3MTUxMTIxLCJmaXJzdF9uYW1lIjpudWxsLCJpZCI6ImFhOGIwOTUzLWUzNGItNGE4My1iZDQzLTMyYTIzMTg4ZmQ4MSIsImlzX2FjdGl2ZSI6dHJ1ZSwibGFzdF9uYW1lIjpudWxsLCJ1c2VybmFtZSI6ImZpcmVtYW4ifQ.T5lP3RvlcJbE5f1b-WR2NJ-l2z9Z50h4JoxfO83K_3k"
+
+  console.log("[v0] Server-side: window is undefined, returning null")
+  return null
 }
 
 // Store token in localStorage
@@ -163,8 +169,15 @@ export function createAuthenticatedFetch() {
 
 // Check if user is logged in
 export function isLoggedIn(): boolean {
+  if (typeof window === "undefined") {
+    console.log("[v0] isLoggedIn called on server-side, returning false")
+    return false
+  }
+
   const token = getStoredToken()
-  return token !== null && !isTokenExpired()
+  const loggedIn = token !== null && !isTokenExpired()
+  console.log("[v0] isLoggedIn result:", loggedIn)
+  return loggedIn
 }
 
 // Utility to check if token is expired
@@ -184,6 +197,11 @@ export function isTokenExpired(): boolean {
 
 // Get user info from token
 export function getUserFromToken() {
+  if (typeof window === "undefined") {
+    console.log("[v0] getUserFromToken called on server-side, returning null")
+    return null
+  }
+
   try {
     const token = getStoredToken()
     if (!token) return null
