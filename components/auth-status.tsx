@@ -47,12 +47,19 @@ export default function AuthStatus() {
 
   if (!isAuthenticated) {
     return (
-      <Link href="/login">
-        <Button variant="outline" size="sm">
-          <User className="w-4 h-4 mr-2" />
-          Đăng nhập
-        </Button>
-      </Link>
+      <div className="flex items-center space-x-2">
+        <Link href="/register">
+          <Button variant="ghost" size="sm" className="text-accent hover:text-accent-foreground hover:bg-accent">
+            Đăng ký
+          </Button>
+        </Link>
+        <Link href="/login">
+          <Button variant="outline" size="sm">
+            <User className="w-4 h-4 mr-2" />
+            Đăng nhập
+          </Button>
+        </Link>
+      </div>
     )
   }
 

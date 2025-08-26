@@ -83,6 +83,53 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
   return data
 }
 
+export async function loginWithGoogle(): Promise<void> {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
+
+  return new Promise((resolve, reject) => {
+    // Open Google OAuth in popup
+    const popup = window.open(
+      `${apiBaseUrl}/api/v1/auth/google`,
+      "google-login",
+      "width=500,height=600,scrollbars=yes,resizable=yes",
+    )
+
+    if (!popup) {
+      reject(new Error("Không thể mở popup. Vui lòng cho phép popup và thử lại."))
+      return
+    }
+
+    // Listen for messages from the popup
+    const messageListener = (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        return
+      }
+
+      if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
+        // Store the token
+        storeToken(event.data.token)
+        window.removeEventListener("message", messageListener)
+        resolve()
+      } else if (event.data.type === "GOOGLE_AUTH_ERROR") {
+        window.removeEventListener("message", messageListener)
+        reject(new Error(event.data.error || "Đăng nhập Google thất bại"))
+      }
+    }
+
+    window.addEventListener("message", messageListener)
+
+    // Check if popup was closed manually
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed)
+        window.removeEventListener("message", messageListener)
+        reject(new Error("Đăng nhập bị hủy"))
+      }
+    }, 1000)
+  })
+}
+
 // Logout function
 export function logout(): void {
   // Remove token (this will automatically dispatch the auth change event)

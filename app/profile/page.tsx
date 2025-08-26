@@ -71,7 +71,7 @@ export default async function ProfilePage() {
         {/* Profile Header */}
         <Card className="overflow-hidden shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-            <div className="flex items-center gap-4 pt-2">
+            <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                 <User className="w-8 h-8 text-white" />
               </div>
