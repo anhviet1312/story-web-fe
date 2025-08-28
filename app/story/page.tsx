@@ -1,11 +1,13 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Calendar, Hash } from "lucide-react"
-import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
-import { PaginationAdvanced } from "@/components/pagination-advanced"
+import { BookOpen, Calendar, Hash, Loader2 } from "lucide-react"
+import { createAuthenticatedFetch } from "@/lib/auth"
+import { useSearchParams } from "next/navigation"
 
 interface Story {
   id: string
@@ -26,31 +28,6 @@ interface StoriesResponse {
     page: number
     page_size: number
     items: Story[]
-  }
-}
-
-async function getStories(page: number): Promise<StoriesResponse | null> {
-  try {
-    if (isTokenExpired()) {
-      console.error("JWT token has expired")
-      return null
-    }
-
-    const authFetch = createAuthenticatedFetch()
-    const res = await authFetch(`${process.env.API_BASE_URL}/api/v1/protected/story?page=${page}`, {
-      cache: "no-store",
-    })
-
-    if (!res.ok) {
-      console.error(`API Error: ${res.status} ${res.statusText}`)
-      return null
-    }
-
-    const data: StoriesResponse = await res.json()
-    return data
-  } catch (err) {
-    console.error("Failed to fetch stories:", err)
-    return null
   }
 }
 
@@ -95,23 +72,89 @@ function getTypeColor(type: string): string {
   }
 }
 
-export default async function StoriesIndex({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>
-}) {
-  const { page } = await searchParams
-  const currentPage = Number.parseInt(page || "1")
-  const storiesRes = await getStories(currentPage)
+export default function StoriesIndex() {
+  const searchParams = useSearchParams()
+  const currentPage = Number.parseInt(searchParams.get("page") || "1")
 
-  if (!storiesRes) {
-    notFound()
+  const [stories, setStories] = useState<Story[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    page_size: 20,
+    totalPages: 0,
+  })
+
+  useEffect(() => {
+    async function fetchStories() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const authFetch = createAuthenticatedFetch()
+        const res = await authFetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/protected/story?page=${currentPage}`,
+          {
+            cache: "no-store",
+          },
+        )
+
+        if (!res.ok) {
+          throw new Error(`API Error: ${res.status} ${res.statusText}`)
+        }
+
+        const data: StoriesResponse = await res.json()
+        setStories(data.data.items)
+        setPagination({
+          total: data.data.total,
+          page: data.data.page,
+          page_size: data.data.page_size,
+          totalPages: Math.ceil(data.data.total / data.data.page_size),
+        })
+      } catch (err) {
+        console.error("Failed to fetch stories:", err)
+        setError(err instanceof Error ? err.message : "Failed to fetch stories")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStories()
+  }, [currentPage])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-slate-600" />
+            <span className="ml-2 text-slate-600">Đang tải danh sách truyện...</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const {
-    data: { total, page: apiPage, page_size, items: stories },
-  } = storiesRes
-  const totalPages = Math.ceil(total / page_size)
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6 text-center">
+              <p className="text-red-600 mb-4">Lỗi khi tải danh sách truyện: {error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Thử lại
+              </button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -120,7 +163,7 @@ export default async function StoriesIndex({
           <CardHeader>
             <CardTitle className="text-2xl font-bold">Danh sách truyện</CardTitle>
             <p className="text-slate-300 text-sm mt-1">
-              Trang {currentPage} / {totalPages} • Tổng {total} truyện
+              Trang {currentPage} / {pagination.totalPages} • Tổng {pagination.total} truyện
             </p>
           </CardHeader>
         </Card>
@@ -198,16 +241,6 @@ export default async function StoriesIndex({
           </Card>
         )}
 
-        {totalPages > 1 && (
-          <div className="mt-8">
-            <Card>
-              <CardContent className="p-6">
-                <PaginationAdvanced currentPage={currentPage} totalPages={totalPages} baseUrl="/story" />
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Story Statistics */}
         <div className="mt-6 text-center">
           <Card className="bg-slate-50">
@@ -219,7 +252,7 @@ export default async function StoriesIndex({
                 </div>
                 <div className="flex items-center gap-1">
                   <Hash className="w-4 h-4" />
-                  <span>Tổng {total} truyện</span>
+                  <span>Tổng {pagination.total} truyện</span>
                 </div>
               </div>
             </CardContent>

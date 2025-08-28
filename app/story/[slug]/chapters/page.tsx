@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, ArrowLeft, List, Hash } from "lucide-react"
-import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
+import { createAuthenticatedFetch } from "@/lib/auth"
 import { PaginationAdvanced } from "@/components/pagination-advanced"
 
 interface Chapter {
@@ -23,11 +23,6 @@ interface ChaptersResponse {
 
 async function getChapters(slug: string, page = 1): Promise<ChaptersResponse | null> {
   try {
-    if (isTokenExpired()) {
-      console.error("JWT token has expired")
-      return null
-    }
-
     const authenticatedFetch = createAuthenticatedFetch()
 
     const response = await authenticatedFetch(

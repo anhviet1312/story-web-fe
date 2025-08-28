@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Calendar, User, Eye, BookOpen } from "lucide-react"
 import Image from "next/image"
-import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
+import { createAuthenticatedFetch } from "@/lib/auth"
 import { DebugInfo } from "@/components/debug-info"
 import Link from "next/link"
 
@@ -27,12 +27,6 @@ interface StoryResponse {
 
 async function getStory(slug: string): Promise<Story | null> {
   try {
-    // Check if token is expired
-    if (isTokenExpired()) {
-      console.error("JWT token has expired")
-      return null
-    }
-
     const authenticatedFetch = createAuthenticatedFetch()
 
     const response = await authenticatedFetch(`${process.env.API_BASE_URL}/api/v1/protected/story/${slug}/detail`, {
@@ -96,10 +90,9 @@ function getTypeColor(type: string): string {
 export default async function StoryPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: { slug: string }
 }) {
-  // Await params before using its properties
-  const { slug } = await params
+  const { slug } = params
   const story = await getStory(slug)
 
   if (!story) {
@@ -111,7 +104,7 @@ export default async function StoryPage({
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="overflow-hidden shadow-lg">
           <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-700 text-white">
-            <div className="flex flex-col space-y-4 pt-2">
+            <div className="flex flex-col space-y-4">
               <div className="flex flex-wrap gap-2">
                 <Badge className={getTypeColor(story.type)}>{story.type}</Badge>
                 <Badge className={getStatusColor(story.status)}>

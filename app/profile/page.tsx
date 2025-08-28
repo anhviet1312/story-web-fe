@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { User, Mail, Shield, Hash } from "lucide-react"
-import { createAuthenticatedFetch, isTokenExpired } from "@/lib/auth"
+import { createAuthenticatedFetch } from "@/lib/auth"
 
 interface UserProfile {
   id: string
@@ -19,14 +19,11 @@ interface UserResponse {
 
 async function getUserProfile(): Promise<UserProfile | null> {
   try {
-    if (isTokenExpired()) {
-      console.error("JWT token has expired")
-      return null
-    }
-
     const authenticatedFetch = createAuthenticatedFetch()
 
-    const response = await authenticatedFetch(`${process.env.API_BASE_URL}/api/v1/protected/user/me`, {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:8080"
+
+    const response = await authenticatedFetch(`${apiBaseUrl}/api/v1/protected/user/me`, {
       cache: "no-store",
     })
 

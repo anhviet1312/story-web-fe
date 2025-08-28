@@ -22,18 +22,13 @@ function dispatchAuthChange(): void {
   }
 }
 
-// Get stored token from localStorage or fallback to hardcoded
 export function getStoredToken(): string | null {
-  console.log("[v0] getStoredToken called, window type:", typeof window)
-
   if (typeof window !== "undefined") {
-    console.log("[v0] Client-side: accessing localStorage")
     const token = localStorage.getItem(TOKEN_KEY)
-    console.log("[v0] Token from localStorage:", token ? "found" : "not found")
     return token
   }
 
-  console.log("[v0] Server-side: window is undefined, returning null")
+  // Server-side: no token available
   return null
 }
 
@@ -147,6 +142,12 @@ export function logout(): void {
 
 export function getAuthHeaders(): HeadersInit {
   const token = getStoredToken()
+  if (!token) {
+    return {
+      "Content-Type": "application/json",
+    }
+  }
+
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -155,6 +156,12 @@ export function getAuthHeaders(): HeadersInit {
 
 export function createAuthenticatedFetch() {
   return async (url: string, options: RequestInit = {}) => {
+    const token = getStoredToken()
+
+    if (!token) {
+      throw new Error("No authentication token available")
+    }
+
     const authHeaders = getAuthHeaders()
 
     return fetch(url, {
@@ -167,27 +174,38 @@ export function createAuthenticatedFetch() {
   }
 }
 
-// Check if user is logged in
 export function isLoggedIn(): boolean {
   if (typeof window === "undefined") {
-    console.log("[v0] isLoggedIn called on server-side, returning false")
+    // Server-side: can't check localStorage, assume not logged in
     return false
   }
 
   const token = getStoredToken()
-  const loggedIn = token !== null && !isTokenExpired()
-  console.log("[v0] isLoggedIn result:", loggedIn)
-  return loggedIn
+  return token !== null && !isTokenExpired()
 }
 
 // Utility to check if token is expired
 export function isTokenExpired(): boolean {
   try {
+    if (typeof window === "undefined") {
+      // Server-side: can't access localStorage, assume expired
+      return true
+    }
+
     const token = getStoredToken()
     if (!token) return true
 
+    console.log("[v0] Checking token expiration...")
     const payload = JSON.parse(atob(token.split(".")[1]))
     const currentTime = Math.floor(Date.now() / 1000)
+    const tokenExp = payload.exp
+    const timeUntilExpiry = tokenExp - currentTime
+
+    console.log("[v0] Current time (seconds):", currentTime)
+    console.log("[v0] Token expires at (seconds):", tokenExp)
+    console.log("[v0] Time until expiry (seconds):", timeUntilExpiry)
+    console.log("[v0] Token expired?", tokenExp < currentTime)
+
     return payload.exp < currentTime
   } catch (error) {
     console.error("Error checking token expiration:", error)
@@ -197,12 +215,12 @@ export function isTokenExpired(): boolean {
 
 // Get user info from token
 export function getUserFromToken() {
-  if (typeof window === "undefined") {
-    console.log("[v0] getUserFromToken called on server-side, returning null")
-    return null
-  }
-
   try {
+    if (typeof window === "undefined") {
+      // Server-side: can't access localStorage
+      return null
+    }
+
     const token = getStoredToken()
     if (!token) return null
 

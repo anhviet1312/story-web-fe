@@ -195,7 +195,7 @@ export default function LoginPage() {
                     Tên đăng nhập: <span className="text-foreground font-semibold">fireman</span>
                   </div>
                   <div className="text-muted-foreground">
-                    Mật khẩu: <span className="text-foreground font-semibold">helsinki</span>
+                    Mật khẩu: <span className="text-foreground font-semibold">Helsinki1</span>
                   </div>
                 </div>
               </div>
